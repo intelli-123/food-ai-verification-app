@@ -1,8 +1,9 @@
-//src/routes/analyze.routes.js
 import express from "express";
-import { analyze } from "../controllers/analyze.controller.js";
+import { analyzeExistingImage } from "../controllers/analyze.controller.js";
 
 const router = express.Router();
-router.post("/", analyze);
+
+// Analyze existing stored image
+router.post("/existing", analyzeExistingImage);
 
 export default router;
