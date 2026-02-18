@@ -1,0 +1,251 @@
+const table = document.getElementById("foodTable");
+const analyzeSelectedBtn = document.getElementById("analyzeSelectedBtn");
+const analyzeAllBtn = document.getElementById("analyzeAllBtn");
+
+let foodsData = [];
+let selectedFoods = new Set();
+let imageIndexes = {};
+const THRESHOLD = 70;
+
+async function fetchFoods() {
+  const res = await fetch("/api/foods?t=" + Date.now());
+  return res.json();
+}
+
+async function renderTable() {
+  foodsData = await fetchFoods();
+  table.innerHTML = "";
+
+  foodsData.forEach(food => {
+
+    imageIndexes[food._id] = 0;
+
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>
+        <input type="checkbox" onchange="toggleSelect('${food._id}')">
+      </td>
+
+      <td>
+        <div class="image-wrapper">
+          <div class="carousel-track" id="track-${food._id}">
+            ${food.images.map(img => `<img src="${img}" />`).join("")}
+          </div>
+
+          ${food.images.length > 1 ? `
+            <button class="slider-btn slider-left"
+              onclick="changeImage('${food._id}', -1)">‹</button>
+
+            <button class="slider-btn slider-right"
+              onclick="changeImage('${food._id}', 1)">›</button>
+          ` : ""}
+        </div>
+
+        <!-- 📊 Score Dots -->
+        <div class="dots" id="dots-${food._id}">
+          ${food.images.map((_, i) =>
+            `<span class="dot ${i===0?'active':''}"
+              id="dot-${food._id}-${i}"
+              onclick="goToImage('${food._id}', ${i})">-</span>`
+          ).join("")}
+        </div>
+      </td>
+
+      <td>${food.name}</td>
+
+      <td style="white-space:normal;">
+        ${food.description}
+      </td>
+
+      <td>${food.isVeg ? "Veg" : "Non-Veg"}</td>
+
+      <td id="result-${food._id}">Pending</td>
+
+      <td id="human-${food._id}">-</td>
+    `;
+
+    table.appendChild(row);
+  });
+}
+
+/* ===============================
+   SELECTION
+================================ */
+
+window.toggleSelect = function(id) {
+  if (selectedFoods.has(id)) {
+    selectedFoods.delete(id);
+  } else {
+    selectedFoods.add(id);
+  }
+  analyzeSelectedBtn.disabled = selectedFoods.size === 0;
+};
+
+/* ===============================
+   CAROUSEL
+================================ */
+
+window.changeImage = function(id, direction) {
+  const food = foodsData.find(f => f._id === id);
+  if (!food || food.images.length === 0) return;
+
+  imageIndexes[id] += direction;
+
+  if (imageIndexes[id] < 0)
+    imageIndexes[id] = food.images.length - 1;
+
+  if (imageIndexes[id] >= food.images.length)
+    imageIndexes[id] = 0;
+
+  updateCarousel(id);
+};
+
+window.goToImage = function(id, index) {
+  imageIndexes[id] = index;
+  updateCarousel(id);
+};
+
+function updateCarousel(id) {
+  const track = document.getElementById(`track-${id}`);
+  const dots = document.querySelectorAll(`#dots-${id} .dot`);
+
+  const index = imageIndexes[id] || 0;
+  track.style.transform = `translateX(-${index * 180}px)`;
+
+  dots.forEach((dot, i) => {
+    dot.classList.toggle("active", i === index);
+  });
+}
+
+/* ===============================
+   ANALYSIS (SEQUENTIAL)
+================================ */
+
+analyzeSelectedBtn.addEventListener("click", async () => {
+  for (let id of selectedFoods) {
+    const food = foodsData.find(f => f._id === id);
+    await analyzeFood(food);
+  }
+});
+
+analyzeAllBtn.addEventListener("click", async () => {
+  for (let food of foodsData) {
+    await analyzeFood(food);
+  }
+});
+
+async function analyzeFood(food) {
+
+    const resultCell = document.getElementById(`result-${food._id}`);
+    const humanCell = document.getElementById(`human-${food._id}`);
+
+    // 🔄 Spinner
+    resultCell.innerHTML = `<span class="spinner"></span> Analyzing...`;
+    humanCell.innerText = "-";
+
+    let lowestScore = 100;
+    let failedImage = null;
+
+    for (let i = 0; i < food.images.length; i++) {
+
+      const imageUrl = food.images[i];
+
+      try {
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+        const res = await fetch("/api/analyze/existing", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            imageUrl,
+            name:food.name,
+            description:food.description,
+            isVeg:food.isVeg
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        const data = await res.json();
+
+        if (!data.result) throw new Error("Empty LLM response");
+
+        let cleaned = data.result.replace(/```json|```/g,"").trim();
+
+        let parsed;
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch {
+          console.warn("Malformed JSON from LLM:", cleaned);
+          continue; // skip this image
+        }
+
+        const dot = document.getElementById(`dot-${food._id}-${i}`);
+
+        if (dot) {
+          dot.innerText = parsed.final_confidence + "%";
+
+          // 🧪 Tooltip content
+          dot.setAttribute("data-tooltip",
+            `Final: ${parsed.final_confidence}%
+  Clarity: ${parsed.clarity}%
+  Authenticity: ${parsed.authenticity}%`
+          );
+        }
+
+        if (parsed.final_confidence < lowestScore) {
+          lowestScore = parsed.final_confidence;
+          failedImage = imageUrl;
+        }
+
+      } catch (error) {
+        console.error("Analysis error:", error);
+
+        const dot = document.getElementById(`dot-${food._id}-${i}`);
+        if (dot) {
+          dot.innerText = "ERR";
+          dot.style.background = "#ef4444";
+          dot.setAttribute("data-tooltip", "LLM Error or Timeout");
+        }
+      }
+    }
+
+    /* ===============================
+      HUMAN LOOP
+    ================================ */
+
+    if (lowestScore >= THRESHOLD) {
+      resultCell.innerHTML =
+        `<span class="pass">${lowestScore}% PASS</span>`;
+      humanCell.innerText = "Not Required";
+    } else {
+      resultCell.innerHTML =
+        `<span class="fail">${lowestScore}% FAIL</span><br/>
+        Image: ${failedImage}`;
+
+      humanCell.innerHTML = `
+        <button onclick="approve('${food._id}')">Approve</button>
+        <button onclick="reject('${food._id}')">Reject</button>
+      `;
+    }
+  }
+
+/* ===============================
+   HUMAN REVIEW
+================================ */
+
+window.approve = function(id) {
+  document.getElementById(`human-${id}`).innerHTML =
+    `<span class="human">Approved by Human</span>`;
+};
+
+window.reject = function(id) {
+  document.getElementById(`human-${id}`).innerHTML =
+    `<span class="fail">Rejected by Human</span>`;
+};
+
+window.onload = renderTable;

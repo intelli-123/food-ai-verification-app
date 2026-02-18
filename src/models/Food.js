@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const FoodSchema = new mongoose.Schema({
   name: String,
   description: String,
-  imageUrl: String,
+  images: [String],   // 🔥 multiple images
   isVeg: Boolean,
   country: String
 });
