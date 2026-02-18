@@ -9,15 +9,17 @@
       font-family: Arial, sans-serif;
       margin: 0;
       background-color: #f4f6f9;
+      color: #1e293b;
     }
 
     header {
-      background-color: #1e293b;
+      background: linear-gradient(90deg, #1e293b, #334155);
       color: white;
       padding: 20px;
       text-align: center;
-      font-size: 24px;
+      font-size: 26px;
       font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
 
     .container {
@@ -40,8 +42,16 @@
     }
 
     select {
-      padding: 6px;
-      border-radius: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #f9fafb;
+      font-size: 14px;
+      transition: border 0.3s ease;
+    }
+
+    select:hover {
+      border-color: #2563eb;
     }
 
     table {
@@ -49,6 +59,8 @@
       border-collapse: collapse;
       background: white;
       box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      border-radius: 8px;
+      overflow: hidden;
     }
 
     th, td {
@@ -62,14 +74,21 @@
 
     th {
       background-color: #f1f5f9;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    tr:hover td {
+      background: #f9fafb;
     }
 
     /* ===== CAROUSEL ===== */
-
     .image-wrapper {
       position: relative;
       width: 180px;
       overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
     .carousel-track {
@@ -81,6 +100,11 @@
       width: 180px;
       border-radius: 8px;
       flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+
+    .carousel-track img:hover {
+      transform: scale(1.1);
     }
 
     .slider-btn {
@@ -109,36 +133,49 @@
     .slider-left { left: 5px; }
     .slider-right { right: 5px; }
 
-    .dots {
-      text-align: center;
-      margin-top: 6px;
+    /* 🎨 Blur badge */
+    .badge-blur {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #dc2626;
+      color: white;
+      padding: 3px 6px;
+      font-size: 12px;
+      border-radius: 4px;
+      display: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
     }
+
+    /* 📊 Score dots */
+    .dots { text-align: center; margin-top: 6px; }
 
     .dot {
-      height: 8px;
-      width: 8px;
-      margin: 0 3px;
-      background-color: #cbd5e1;
-      border-radius: 50%;
       display: inline-block;
+      margin: 0 3px;
+      padding: 4px 6px;
+      border-radius: 10px;
+      background: #cbd5e1;
+      font-size: 11px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: 0.3s;
     }
 
-    .dot.active {
-      background-color: #2563eb;
-    }
+    .dot.active { background: #2563eb; color: white; }
+
+    .pass { color: green; font-weight: bold; }
+    .fail { color: red; font-weight: bold; }
 
     /* ===== BUTTONS ===== */
-
     button {
-      padding: 6px 12px;
+      padding: 8px 14px;
       background-color: #2563eb;
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
+      transition: background 0.3s ease, transform 0.2s ease;
     }
 
     button:disabled {
@@ -148,21 +185,66 @@
 
     button:hover:not(:disabled) {
       background-color: #1d4ed8;
+      transform: translateY(-2px);
     }
 
     .pass {
-      color: green;
+      color: #16a34a;
       font-weight: bold;
     }
 
     .fail {
-      color: red;
+      color: #dc2626;
       font-weight: bold;
     }
 
     .human {
-      color: orange;
+      color: #f59e0b;
       font-weight: bold;
+    }
+
+    /* 🔄 Spinner */
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #2563eb;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 🧪 Tooltip */
+    .dot {
+      position: relative;
+      display: inline-block;
+      padding: 4px 6px;
+      border-radius: 10px;
+      background: #cbd5e1;
+      font-size: 11px;
+      cursor: pointer;
+      margin: 0 3px;
+    }
+
+    .dot:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 120%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111827;
+      color: white;
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: pre-line; /* allow line breaks */
+      white-space: nowrap;
+      z-index: 999;
     }
 
   </style>
