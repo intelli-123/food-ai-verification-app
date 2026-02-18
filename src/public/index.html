@@ -64,21 +64,23 @@
       background-color: #f1f5f9;
     }
 
-    img {
-      border-radius: 8px;
-      width: 120px;
-      height: auto;
-    }
+    /* ===== CAROUSEL ===== */
 
     .image-wrapper {
       position: relative;
-      display: inline-block;
+      width: 180px;
+      overflow: hidden;
     }
 
-    .image-wrapper img {
-      width: 160px;
+    .carousel-track {
+      display: flex;
+      transition: transform 0.4s ease-in-out;
+    }
+
+    .carousel-track img {
+      width: 180px;
       border-radius: 8px;
-      display: block;
+      flex-shrink: 0;
     }
 
     .slider-btn {
@@ -97,20 +99,37 @@
       align-items: center;
       justify-content: center;
       transition: 0.2s;
+      z-index: 2;
     }
 
     .slider-btn:hover {
       background: rgba(0,0,0,0.85);
     }
 
-    .slider-left {
-      left: 5px;
+    .slider-left { left: 5px; }
+    .slider-right { right: 5px; }
+
+    .dots {
+      text-align: center;
+      margin-top: 6px;
     }
 
-    .slider-right {
-      right: 5px;
+    .dot {
+      height: 8px;
+      width: 8px;
+      margin: 0 3px;
+      background-color: #cbd5e1;
+      border-radius: 50%;
+      display: inline-block;
+      cursor: pointer;
+      transition: background-color 0.3s;
     }
 
+    .dot.active {
+      background-color: #2563eb;
+    }
+
+    /* ===== BUTTONS ===== */
 
     button {
       padding: 6px 12px;
@@ -158,13 +177,11 @@
 <div class="container">
 
   <div class="top-bar">
-
     <div class="actions">
       <button id="analyzeSelectedBtn" disabled>Analyze Selected</button>
       <button id="analyzeAllBtn">Analyze All</button>
     </div>
 
-    <!-- 🌍 ALL REQUIRED LANGUAGES -->
     <select id="languageSwitcher">
       <option value="en">English</option>
       <option value="hi">Hindi</option>
@@ -177,7 +194,6 @@
       <option value="ja">Japanese</option>
       <option value="pt">Portuguese</option>
     </select>
-
   </div>
 
   <table>
@@ -192,7 +208,6 @@
         <th>Human Review</th>
       </tr>
     </thead>
-
     <tbody id="foodTable"></tbody>
   </table>
 

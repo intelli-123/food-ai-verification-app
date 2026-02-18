@@ -4,6 +4,7 @@ const analyzeAllBtn = document.getElementById("analyzeAllBtn");
 
 let foodsData = [];
 let selectedFoods = new Set();
+let imageIndexes = {};
 const THRESHOLD = 70;
 
 async function fetchFoods() {
@@ -11,14 +12,13 @@ async function fetchFoods() {
   return res.json();
 }
 
-
 async function renderTable() {
   foodsData = await fetchFoods();
   table.innerHTML = "";
 
   foodsData.forEach(food => {
 
-    let imageIndex = 0;
+    imageIndexes[food._id] = 0;
 
     const row = document.createElement("tr");
 
@@ -29,11 +29,24 @@ async function renderTable() {
 
       <td>
         <div class="image-wrapper">
-          <img id="img-${food._id}" src="${food.images?.[0] || ''}" />
-          <button class="slider-btn slider-left"
-            onclick="changeImage('${food._id}', -1)">‹</button>
-          <button class="slider-btn slider-right"
-            onclick="changeImage('${food._id}', 1)">›</button>
+          <div class="carousel-track" id="track-${food._id}">
+            ${food.images.map(img => `<img src="${img}" />`).join("")}
+          </div>
+
+          ${food.images.length > 1 ? `
+            <button class="slider-btn slider-left"
+              onclick="changeImage('${food._id}', -1)">‹</button>
+
+            <button class="slider-btn slider-right"
+              onclick="changeImage('${food._id}', 1)">›</button>
+          ` : ""}
+        </div>
+
+        <div class="dots" id="dots-${food._id}">
+          ${food.images.map((_, i) =>
+            `<span class="dot ${i===0?'active':''}"
+              onclick="goToImage('${food._id}', ${i})"></span>`
+          ).join("")}
         </div>
       </td>
 
@@ -60,25 +73,40 @@ window.toggleSelect = function(id) {
   } else {
     selectedFoods.add(id);
   }
-
   analyzeSelectedBtn.disabled = selectedFoods.size === 0;
 };
 
 window.changeImage = function(id, direction) {
   const food = foodsData.find(f => f._id === id);
-  const img = document.getElementById(`img-${id}`);
+  if (!food || food.images.length === 0) return;
 
-  let currentIndex = food.images.indexOf(img.src.replace(window.location.origin,""));
+  imageIndexes[id] += direction;
 
-  if (currentIndex === -1) currentIndex = 0;
+  if (imageIndexes[id] < 0)
+    imageIndexes[id] = food.images.length - 1;
 
-  currentIndex += direction;
+  if (imageIndexes[id] >= food.images.length)
+    imageIndexes[id] = 0;
 
-  if (currentIndex < 0) currentIndex = food.images.length - 1;
-  if (currentIndex >= food.images.length) currentIndex = 0;
-
-  img.src = food.images[currentIndex];
+  updateCarousel(id);
 };
+
+window.goToImage = function(id, index) {
+  imageIndexes[id] = index;
+  updateCarousel(id);
+};
+
+function updateCarousel(id) {
+  const track = document.getElementById(`track-${id}`);
+  const dots = document.querySelectorAll(`#dots-${id} .dot`);
+
+  const index = imageIndexes[id] || 0;
+  track.style.transform = `translateX(-${index * 180}px)`;
+
+  dots.forEach((dot, i) => {
+    dot.classList.toggle("active", i === index);
+  });
+}
 
 analyzeSelectedBtn.addEventListener("click", async () => {
   for (let id of selectedFoods) {
@@ -128,13 +156,13 @@ async function analyzeFood(food) {
   }
 
   if (lowestScore >= THRESHOLD) {
-    resultCell.innerHTML = `<span class="pass">${lowestScore}% PASS</span>`;
+    resultCell.innerHTML =
+      `<span class="pass">${lowestScore}% PASS</span>`;
     humanCell.innerText = "Not Required";
   } else {
-    resultCell.innerHTML = `
-      <span class="fail">${lowestScore}% FAIL</span><br/>
-      Image: ${failedImage}
-    `;
+    resultCell.innerHTML =
+      `<span class="fail">${lowestScore}% FAIL</span><br/>
+       Image: ${failedImage}`;
 
     humanCell.innerHTML = `
       <button onclick="approve('${food._id}')">Approve</button>
